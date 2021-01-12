@@ -188,14 +188,9 @@ class QuadrotorEnvMulti(gym.Env):
         obs_neighbors = np.stack(obs_neighbors)
 
         # clip observation space of neighborhoods
-        # obs_neighbors = np.clip(
-        #     obs_neighbors, a_min=self.clip_neighbor_space_min_box, a_max=self.clip_neighbor_space_max_box,
-        # )
-
-        # hotfix for clipping. TODO: make this look nicer
-        neighbor_space_min = list(np.concatenate((self.observation_space.low[:6], np.zeros(3)))) * (self.num_agents-1)
-        neighbor_space_max = list(np.concatenate((self.observation_space.high[:6], np.ones(3) * 3.15))) * (self.num_agents-1)
-        obs_neighbors = np.clip(obs_neighbors, a_min=neighbor_space_min, a_max=neighbor_space_max)
+        obs_neighbors = np.clip(
+            obs_neighbors, a_min=self.clip_neighbor_space_min_box, a_max=self.clip_neighbor_space_max_box,
+        )
 
         obs_ext = np.concatenate((obs, obs_neighbors), axis=1)
         return obs_ext

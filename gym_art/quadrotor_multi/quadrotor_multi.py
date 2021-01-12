@@ -90,7 +90,7 @@ class QuadrotorEnvMulti(gym.Env):
         else:
             raise NotImplementedError(f'{obs_repr} not supported!')
 
-        self.neighbor_obs_size = 6
+        self.neighbor_obs_size = 9
         self.clip_neighbor_space_length = (num_agents-1) * self.neighbor_obs_size
         self.clip_neighbor_space_min_box = self.observation_space.low[obs_self_size:obs_self_size+self.clip_neighbor_space_length]
         self.clip_neighbor_space_max_box = self.observation_space.high[obs_self_size:obs_self_size+self.clip_neighbor_space_length]
@@ -170,18 +170,27 @@ class QuadrotorEnvMulti(gym.Env):
         return tuple(e.dynamics for e in self.envs)
 
     def extend_obs_space(self, obs):
+        '''
+        :param obs: (num_agents X xyz_vxyz_R_omega) 2d array
+        :return: extended obs. xyz_vxyz of other agents concatenated to each row vector
+        '''
         obs_neighbors = []
         for i in range(len(obs)):
             observs = obs[i]
-            obs_neighbor = np.array([obs[j][:self.neighbor_obs_size] for j in range(len(obs)) if j != i])
-            obs_neighbor_rel = obs_neighbor - observs[:self.neighbor_obs_size]
-            obs_neighbors.append(obs_neighbor_rel.reshape(-1))
+            obs_neighbor = np.array([obs[j][:6] for j in range(len(obs)) if j != i])
+            xyz_vxyz_rel = obs_neighbor - observs[:6]
+            # relative bearing calculation
+            self_vxyz, neighbor_vxyz = observs[3:6], obs_neighbor[:, 3:6]
+            bearing_rel = np.array([np.arccos(self_vxyz * neighbor_vxyz[j] / (1e-8 + np.linalg.norm(self_vxyz) * np.linalg.norm(neighbor_vxyz[j]))) \
+                                   for j in range(len(neighbor_vxyz))])
+            obs_rel = np.concatenate((xyz_vxyz_rel, bearing_rel), axis=1)
+            obs_neighbors.append(obs_rel.reshape(-1))
         obs_neighbors = np.stack(obs_neighbors)
 
         # clip observation space of neighborhoods
-        obs_neighbors = np.clip(
-            obs_neighbors, a_min=self.clip_neighbor_space_min_box, a_max=self.clip_neighbor_space_max_box,
-        )
+        # obs_neighbors = np.clip(
+        #     obs_neighbors, a_min=self.clip_neighbor_space_min_box, a_max=self.clip_neighbor_space_max_box,
+        # )
         obs_ext = np.concatenate((obs, obs_neighbors), axis=1)
         return obs_ext
 

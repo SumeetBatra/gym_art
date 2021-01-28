@@ -27,7 +27,7 @@ class QuadrotorEnvMulti(gym.Env):
                  swarm_obs='none', quads_use_numba=False, quads_settle=False, quads_settle_range_meters=1.0,
                  quads_vel_reward_out_range=0.8, quads_obstacle_mode='no_obstacles', quads_view_mode='local',
                  quads_obstacle_num=0, quads_obstacle_type='sphere', quads_obstacle_size=0.0, collision_force=True,
-                 adaptive_env=False, obstacle_traj='gravity', local_obs=-1):
+                 adaptive_env=False, obstacle_traj='gravity', local_obs=-1, team_spirit=False):
 
         super().__init__()
 
@@ -42,6 +42,9 @@ class QuadrotorEnvMulti(gym.Env):
         # num_agents=1. More info, please look at sample-factory: envs/quadrotors/wrappers/reward_shaping.py
         self.is_multiagent = True
         self.room_dims = (room_length, room_width, room_height)
+
+        self.team_spirit = team_spirit
+        self.tau = 0
 
         self.envs = []
         self.adaptive_env = adaptive_env
@@ -218,6 +221,18 @@ class QuadrotorEnvMulti(gym.Env):
         self.obstacle_mode = self.envs[0].obstacle_mode
         self.obstacle_num = self.envs[0].obstacle_num
 
+    def team_spirit_reward(self, rewards, tau=0.0):
+        '''
+        Based on https://cdn.openai.com/dota-2.pdf
+        :param rewards: list of rewards for each agent
+        :param tau: interpolation param
+        :return: team spirit rewards
+        '''
+        mean_rew = np.mean(rewards)
+        f = lambda r: (1 - tau) * r + tau * mean_rew
+        ts_rew = [f(rew) for rew in rewards]
+        return ts_rew
+
     def reset(self):
         obs, rewards, dones, infos = [], [], [], []
         self.scenario.reset()
@@ -291,6 +306,9 @@ class QuadrotorEnvMulti(gym.Env):
 
             self.pos[i, :] = self.envs[i].dynamics.pos
 
+        if self.team_spirit:
+            rewards = self.team_spirit_reward(rewards, tau=self.tau)
+
         if self.swarm_obs != 'none' and self.num_agents > 1:
             if self.num_use_neighbor_obs == (self.num_agents - 1):
                 obs_ext = self.extend_obs_space(obs)
@@ -352,6 +370,7 @@ class QuadrotorEnvMulti(gym.Env):
 
             rewards[i] += spacing_reward[i]
             infos[i]["rewards"]["rew_quad_spacing"] = spacing_reward[i]
+            infos[i]["rewards"]["team_spirit_coeff"] = self.tau
 
         # run the scenario passed to self.quads_mode
         infos, rewards = self.scenario.step(infos=infos, rewards=rewards, pos=self.pos)
@@ -404,6 +423,19 @@ class QuadrotorEnvMulti(gym.Env):
                     'num_collisions': self.collisions_per_episode,
                     'num_collisions_after_settle': self.collisions_after_settle,
                 }
+            if self.team_spirit:
+                # try interpolating tau against avg collisions per episode
+                # use max operator to prevent reverting back to smaller values of tau
+                if self.collisions_per_episode <= 2:
+                    self.tau = max(self.tau, 1.0)
+                elif self.collisions_per_episode <= 3:
+                    self.tau = max(self.tau, 0.8)
+                elif self.collisions_per_episode <= 4:
+                    self.tau = max(self.tau, 0.5)
+                elif self.collisions_per_episode <= 6:
+                    self.tau = max(self.tau, 0.3)
+                else:
+                    self.tau = max(self.tau, 0.0)
 
             obs = self.reset()
             dones = [True] * len(dones)  # terminate the episode for all "sub-envs"

@@ -425,17 +425,17 @@ class QuadrotorEnvMulti(gym.Env):
                     'num_collisions_after_settle': self.collisions_after_settle,
                     'team_spirit_coeff': self.tau
                 }
-            if self.team_spirit:
-                # try interpolating tau against avg collisions per episode
-                # use max operator to prevent reverting back to smaller values of tau
-                if 0 <= self.steps <= 1e6:
-                    self.tau = 0
-                elif 1e6 <= self.steps <= 2e6:
-                    self.tau = 0.3
-                elif 2e6 <= self.steps <= 3e6:
-                    self.tau = 0.8
-                else:
-                    self.tau = 1.0
+        if self.team_spirit:
+            # try interpolating tau against avg collisions per episode
+            # use max operator to prevent reverting back to smaller values of tau
+            if 0 <= self.steps <= 1e6:
+                self.tau = 0
+            elif 1e6 <= self.steps <= 2e6:
+                self.tau = 0.3
+            elif 2e6 <= self.steps <= 3e6:
+                self.tau = 0.8
+            else:
+                self.tau = 1.0
 
             obs = self.reset()
             dones = [True] * len(dones)  # terminate the episode for all "sub-envs"

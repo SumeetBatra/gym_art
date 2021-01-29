@@ -370,7 +370,6 @@ class QuadrotorEnvMulti(gym.Env):
 
             rewards[i] += spacing_reward[i]
             infos[i]["rewards"]["rew_quad_spacing"] = spacing_reward[i]
-            infos[i]["rewards"]["rew_team_spirit_coeff"] = self.tau
 
         # run the scenario passed to self.quads_mode
         infos, rewards = self.scenario.step(infos=infos, rewards=rewards, pos=self.pos)
@@ -422,6 +421,7 @@ class QuadrotorEnvMulti(gym.Env):
                 infos[i]['episode_extra_stats'] = {
                     'num_collisions': self.collisions_per_episode,
                     'num_collisions_after_settle': self.collisions_after_settle,
+                    'team_spirit_coeff': self.tau
                 }
             if self.team_spirit:
                 # try interpolating tau against avg collisions per episode

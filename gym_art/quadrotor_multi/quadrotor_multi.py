@@ -433,11 +433,11 @@ class QuadrotorEnvMulti(gym.Env):
         if self.team_spirit:
             # try interpolating tau against avg collisions per episode
             # use max operator to prevent reverting back to smaller values of tau
-            if 0 <= self.steps <= 1e3:
+            if 0 <= self.steps <= 2e8:
                 self.tau = 0
-            elif 1e3 <= self.steps <= 2e6:
+            elif 2e8 <= self.steps <= 4e8:
                 self.tau = 0.3
-            elif 2e6 <= self.steps <= 3e6:
+            elif 4e8 <= self.steps <= 6e8:
                 self.tau = 0.8
             else:
                 self.tau = 1.0

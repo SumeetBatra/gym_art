@@ -27,7 +27,7 @@ class QuadrotorEnvMulti(gym.Env):
                  swarm_obs='none', quads_use_numba=False, quads_settle=False, quads_settle_range_meters=1.0,
                  quads_vel_reward_out_range=0.8, quads_obstacle_mode='no_obstacles', quads_view_mode='local',
                  quads_obstacle_num=0, quads_obstacle_type='sphere', quads_obstacle_size=0.0, collision_force=True,
-                 adaptive_env=False, obstacle_traj='gravity', local_obs=-1, team_spirit=False):
+                 adaptive_env=False, obstacle_traj='gravity', local_obs=-1, team_spirit=False, num_envs=144):
 
         super().__init__()
 
@@ -45,6 +45,8 @@ class QuadrotorEnvMulti(gym.Env):
 
         self.team_spirit = team_spirit
         self.tau = 0
+        self.num_envs = num_envs
+        self.steps = 0
 
         self.envs = []
         self.adaptive_env = adaptive_env
@@ -426,19 +428,19 @@ class QuadrotorEnvMulti(gym.Env):
             if self.team_spirit:
                 # try interpolating tau against avg collisions per episode
                 # use max operator to prevent reverting back to smaller values of tau
-                if self.collisions_per_episode <= 2:
-                    self.tau = max(self.tau, 1.0)
-                elif self.collisions_per_episode <= 3:
-                    self.tau = max(self.tau, 0.8)
-                elif self.collisions_per_episode <= 4:
-                    self.tau = max(self.tau, 0.5)
-                elif self.collisions_per_episode <= 6:
-                    self.tau = max(self.tau, 0.3)
+                if 0 <= self.steps <= 1e6:
+                    self.tau = 0
+                elif 1e6 <= self.steps <= 2e6:
+                    self.tau = 0.3
+                elif 2e6 <= self.steps <= 3e6:
+                    self.tau = 0.8
                 else:
-                    self.tau = max(self.tau, 0.0)
+                    self.tau = 1.0
 
             obs = self.reset()
             dones = [True] * len(dones)  # terminate the episode for all "sub-envs"
+
+        self.steps += self.num_envs
 
         return obs, rewards, dones, infos
 

@@ -46,7 +46,7 @@ class QuadrotorEnvMulti(gym.Env):
         self.team_spirit = team_spirit
         self.tau = 0
         self.num_envs = num_envs
-        self.steps = 0
+        self.steps = 400000000
 
         self.envs = []
         self.adaptive_env = adaptive_env
@@ -308,9 +308,6 @@ class QuadrotorEnvMulti(gym.Env):
 
             self.pos[i, :] = self.envs[i].dynamics.pos
 
-        if self.team_spirit:
-            rewards = self.team_spirit_reward(rewards, tau=self.tau)
-
         if self.swarm_obs != 'none' and self.num_agents > 1:
             if self.num_use_neighbor_obs == (self.num_agents - 1):
                 obs_ext = self.extend_obs_space(obs)
@@ -423,7 +420,6 @@ class QuadrotorEnvMulti(gym.Env):
                 infos[i]['episode_extra_stats'] = {
                     'num_collisions': self.collisions_per_episode,
                     'num_collisions_after_settle': self.collisions_after_settle,
-                    'team_spirit_coeff': self.tau
                 }
 
             obs = self.reset()
@@ -441,6 +437,11 @@ class QuadrotorEnvMulti(gym.Env):
                 self.tau = 0.8
             else:
                 self.tau = 1.0
+
+            rewards = self.team_spirit_reward(rewards, tau=self.tau)
+
+            for i in range(len(infos)):
+                infos[i]['episode_extra_stats']['team_spirit_coeff'] = self.tau
 
         self.steps += self.num_envs
 

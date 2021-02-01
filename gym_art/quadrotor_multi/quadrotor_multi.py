@@ -369,7 +369,7 @@ class QuadrotorEnvMulti(gym.Env):
 
             rewards[i] += spacing_reward[i]
             infos[i]["rewards"]["rew_quad_spacing"] = spacing_reward[i]
-            infos[i]["rewards"]["teamspirit_coeff"] = self.tau
+            infos[i]["rewards"]["rew_teamspirit_coeff"] = self.tau
 
         # run the scenario passed to self.quads_mode
         infos, rewards = self.scenario.step(infos=infos, rewards=rewards, pos=self.pos)

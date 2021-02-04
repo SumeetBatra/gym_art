@@ -95,6 +95,8 @@ class QuadrotorEnvMulti(gym.Env):
             self.neighbor_obs_size = 6
         elif self.swarm_obs == 'pos_vel_goals':
             self.neighbor_obs_size = 9
+        elif self.swarm_obs == 'cadrl':
+            self.neighbor_obs_size = 9
         elif self.swarm_obs == 'none':
             self.neighbor_obs_size = 0
         else:
@@ -179,11 +181,30 @@ class QuadrotorEnvMulti(gym.Env):
             obs_neighbor_rel = np.concatenate((obs_neighbor_rel, goals_rel), axis=1)
         return obs_neighbor_rel
 
+    def get_obs_neighbor_cadrl(self, env_id):
+        i = env_id
+        pos = self.envs[i].dynamics.pos
+        vel = self.envs[i].dynamics.vel
+
+        goal_pos_rel = self.envs[i].goal - pos
+        dist_goal = np.linalg.norm(goal_pos_rel).repeat((self.num_use_neighbor_obs,)).reshape(-1, 1)
+
+        pos_neighbor_rel = np.stack([self.envs[j].dynamics.pos for j in range(len(self.envs)) if j != i]) - pos
+        dist_neighbor = np.linalg.norm(pos_neighbor_rel, axis=1).reshape(-1, 1)
+        vel_neighbor_rel = np.stack([self.envs[j].dynamics.vel for j in range(len(self.envs)) if j != i]) - vel
+        neighbor_radius = self.envs[i].dynamics.arm.repeat((self.num_use_neighbor_obs,)).reshape(-1, 1)
+
+        obs_neighbor = np.concatenate((dist_goal, pos_neighbor_rel, vel_neighbor_rel, dist_neighbor, neighbor_radius), axis=1)
+        return obs_neighbor
+
     def extend_obs_space(self, obs):
-        assert self.swarm_obs == 'pos_vel' or self.swarm_obs == 'pos_vel_goals', f'Invalid parameter {self.swarm_obs} passed in --obs_space'
+        assert self.swarm_obs == 'pos_vel' or self.swarm_obs == 'pos_vel_goals' or self.swarm_obs == 'cadrl', f'Invalid parameter {self.swarm_obs} passed in --obs_space'
         obs_neighbors = []
         for i in range(len(self.envs)):
-            obs_neighbor_rel = self.get_obs_neighbor_rel(env_id=i)
+            if self.swarm_obs == 'cadrl':
+                obs_neighbor_rel = self.get_obs_neighbor_cadrl(env_id=i)
+            else:
+                obs_neighbor_rel = self.get_obs_neighbor_rel(env_id=i)
             obs_neighbors.append(obs_neighbor_rel.reshape(-1))
         obs_neighbors = np.stack(obs_neighbors)
 

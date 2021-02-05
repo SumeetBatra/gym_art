@@ -404,7 +404,6 @@ class Scenario_swarm_vs_swarm(QuadrotorScenario):
             if abs(diff_x) < dist_low_bound:
                 goal_center_2[0] = np.sign(diff_x) * dist_low_bound + goal_center_1[0]
 
-        return np.array([0, 0, 2]), np.array([0, 1, 2])
         return goal_center_1, goal_center_2
 
     def create_formations(self, goal_center_1, goal_center_2):

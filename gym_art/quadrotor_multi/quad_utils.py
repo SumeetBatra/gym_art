@@ -215,7 +215,7 @@ def generate_points(n=3):
 
 def calculate_collision_matrix(positions, arm):
     dist = spatial.distance_matrix(x=positions, y=positions)
-    collision_matrix = (dist < 4 * arm).astype(np.float32)  # 4 * arm is d_min to account for uncertainty in collisions
+    collision_matrix = (dist < 2 * arm).astype(np.float32)  # 4 * arm is d_min to account for uncertainty in collisions
     np.fill_diagonal(collision_matrix, 0.0)
 
     # get upper triangular matrix and check if they have collisions and append to all collisions

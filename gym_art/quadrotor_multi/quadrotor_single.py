@@ -266,10 +266,18 @@ class QuadrotorDynamics:
     def step(self, thrust_cmds, dt):
         thrust_noise = self.thrust_noise.noise()
 
+        # if self.use_numba:
+        #     [self.step1_numba(thrust_cmds, dt, thrust_noise) for t in range(self.dynamics_steps_num)]
+        # else:
+        #     [self.step1(thrust_cmds, dt, thrust_noise) for t in range(self.dynamics_steps_num)]
+
         if self.use_numba:
-            [self.step1_numba(thrust_cmds, dt, thrust_noise) for t in range(self.dynamics_steps_num)]
+            step_func = self.step1_numba
         else:
-            [self.step1(thrust_cmds, dt, thrust_noise) for t in range(self.dynamics_steps_num)]
+            step_func = self.step1
+        for _ in range(self.dynamics_steps_num):
+            step_func(thrust_cmds, dt, thrust_noise)
+
 
     ## Step function integrates based on current derivative values (best fits affine dynamics model)
     # thrust_cmds is motor thrusts given in normalized range [0, 1].
@@ -455,7 +463,7 @@ class QuadrotorDynamics:
                          self.damp_omega_quadratic, self.omega_max, self.pos, self.vel)
 
         # Clipping if met the obstacle and nullify velocities (not sure what to do about accelerations)
-        self.pos = np.clip(self.pos, a_min=self.room_box[0], a_max=self.room_box[1])
+        # self.pos = np.clip(self.pos, a_min=self.room_box[0], a_max=self.room_box[1])
 
         # Set constant variables up for numba
         grav_cnst_arr = np.float64([0, 0, -GRAV])
@@ -1044,18 +1052,44 @@ class QuadrotorSingle:
             self.crashed = self.obstacles.detect_collision(self.dynamics)
         else:
             self.crashed = self.dynamics.pos[2] <= self.dynamics.arm
-        self.crashed = self.crashed or not np.array_equal(self.dynamics.pos,
-                                                          np.clip(self.dynamics.pos,
-                                                                  a_min=self.room_box[0],
-                                                                  a_max=self.room_box[1]))
+        # self.crashed = self.crashed or not np.array_equal(self.dynamics.pos,
+        #                                                   np.clip(self.dynamics.pos,
+        #                                                           a_min=self.room_box[0],
+        #                                                           a_max=self.room_box[1]))
 
         self.time_remain = self.ep_len - self.tick
-        reward, rew_info = compute_reward_weighted(self.dynamics, self.goal, action, self.dt, self.crashed,
-                                                   self.time_remain,
-                                                   rew_coeff=self.rew_coeff, action_prev=self.actions[1], quads_settle=self.quads_settle,
-                                                   quads_settle_range_meters=self.quads_settle_range_meters,
-                                                   quads_vel_reward_out_range=self.quads_vel_reward_out_range
-        )
+        # reward, rew_info = compute_reward_weighted(self.dynamics, self.goal, action, self.dt, self.crashed,
+        #                                            self.time_remain,
+        #                                            rew_coeff=self.rew_coeff, action_prev=self.actions[1], quads_settle=self.quads_settle,
+        #                                            quads_settle_range_meters=self.quads_settle_range_meters,
+        #                                            quads_vel_reward_out_range=self.quads_vel_reward_out_range
+        # )
+        reward = 0
+        rew_info = {
+            "rew_main": 0,
+            'rew_pos': 0,
+            'rew_action': 0,
+            'rew_crash': 0,
+            "rew_orient": 0,
+            "rew_yaw": 0,
+            "rew_rot": 0,
+            "rew_attitude": 0,
+            "rew_spin": 0,
+            "rew_act_change": 0,
+            "rew_vel": 0,
+
+            "rewraw_main": 0,
+            'rewraw_pos': 0,
+            'rewraw_action': 0,
+            'rewraw_crash': 0,
+            "rewraw_orient": 0,
+            "rewraw_yaw": 0,
+            "rewraw_rot": 0,
+            "rewraw_attitude": 0,
+            "rewraw_spin": 0,
+            "rewraw_act_change": 0,
+            "rewraw_vel": 0,
+        }
         self.tick += 1
         done = self.tick > self.ep_len  # or self.crashed
         sv = self.state_vector(self)
@@ -1063,7 +1097,7 @@ class QuadrotorSingle:
         self.traj_count += int(done)
 
         ## TODO: OPTIMIZATION: sv_comp should be a dictionary formed when state() function is called
-        sv_comp = np.split(sv, self.obs_comp_end[:-1], axis=0)
+        # sv_comp = np.split(sv, self.obs_comp_end[:-1], axis=0)
         obs_comp = {
             "xyz": [self.dynamics.pos],
             "vxyz": [self.dynamics.vel],
